@@ -1,6 +1,5 @@
 import tkinter as tk
 import random
-from collections import deque
 
 size = 0
 # List for solution of queen placements
@@ -42,10 +41,14 @@ palette = [
     "#e5c494",  # tan
 ]
 
-# Generate N-Queens solution
-def generate_queen_solution(n):
+'''
+Generate one N-Queens solution
+board_size: size of the board (square)
+output: list where index = row, and value = column of queen
+'''
+def generate_queen_solution(board_size: int) -> list[int]:
     # Store queen placement
-    sol = [-1] * n
+    sol = [-1] * board_size
 
     # Used columns, L -> R diag, and R -> L diag
     used_cols = set()
@@ -55,11 +58,11 @@ def generate_queen_solution(n):
     # Loop through putting a queen in each row
     def backtrack(row):
         # Return copy of solution when at last row
-        if row == n:
+        if row == board_size:
             return sol.copy()
         
         # Look through columns in a random order (avoids same solution)
-        for col in random.sample(range(n), n):
+        for col in random.sample(range(board_size), board_size):
 
             # Skip placement because it's invalid
             if col in used_cols or (row + col) in used_diag1 or (row - col) in used_diag2:
@@ -78,6 +81,8 @@ def generate_queen_solution(n):
             if res:
                 return res
             
+            #print(f"undoing placement at ({row}, {col})")
+            
             # Undo current placement if it's invalid in the future
             used_cols.remove(col)
             used_diag1.remove(row + col)
@@ -87,70 +92,95 @@ def generate_queen_solution(n):
         return None
 
     # Call function starting at row 0
-    return backtrack(0)
+    solution = backtrack(0)
+    (f"generate_queen_solution({board_size}) -> {solution}")
+    return solution
 
-# Return true if queens can attack one another and false if not
-def queens_attack(r1, c1, r2, c2):
-    return r1 == r2 or c1 == c2 or abs(r1 - r2) == abs(c1 - c2)
+'''
+Return true if queens can attack one another and false if not
+row1, col1: position of the first queen
+row2, col2: position of the second queen
+output: True if they are in the same row, column, or diagonal; otherwise False
+'''
+def queens_attack(row1: int, col1: int, row2: int, col2: int) -> bool:
+    # Rows, columns, and diagonal
+    return row1 == row2 or col1 == col2 or abs(row1 - row2) == abs(col1 - col2)
 
-# Stop after finding 2 solutions (test for uniqueness)
-def find_queen_solutions(regs):
-    # Dictionary of domains mapping regions (r) to list of valid placements (i, j)
-    n = len(regs)
-    domains = {r: [] for r in range(n)}
+'''
+Find solution with each queen in a different colored region
+region_board: 2D list of integers where region_board[row][col] = region_id
+output: A list of solutions, where each solution maps (row, column): solution[row] = column
+'''
+def find_queen_solutions(region_board: list[list[int]]) -> list[list[int]]:
+    n = len(region_board)
+    # Dictionary mapping region ID to a list of board cells (row, col) in that region
+    region_cells = {region_id: [] for region_id in range(n)}
 
     # Populate region's list with all cells in it
-    for i in range(n):
-        for j in range(n):
-            domains[regs[i][j]].append((i, j))
-    
+    for row in range(n):
+        for col in range(n):
+            # Location of a specific color
+            region = region_board[row][col]
+            # List of lists corresponding to board colors
+            region_cells[region].append((row, col))
+
     # Sort regions by how many cells they have
-        # Small cells sorted first
-    region_order = sorted(domains, key = lambda r: len(domains[r]))
+        # Small cells sorted first (MRV heuristic)
+    region_order = sorted(region_cells, key = lambda r: len(region_cells[r]))
 
     # Track which constraints are already used
     used_rows = set()
     used_cols = set()
     used_diag1 = set()
     used_diag2 = set()
-    # Map each region to queen's cell
-    assign = {}
+    # Maps region_id to (row, col)
+    queen_in_region = {}
     # keep track of solution locations found
     solutions = []
 
     # Recursive CSP solver
-    def backtrack(idx):
-        # Unique solution >= 2
+    def backtrack(region_index):
+        # Only care if there's > 1 solution
         if len(solutions) >= 2:
             return
         
-        # All regions assigned
-        if idx == n:
-            perm = [-1] * n
-            for r, (i, j) in assign.items():
-                # Column 'j' stored in row 'i'
-                perm[i] = j
-            solutions.append(perm)
+        # All regions assigned a queen
+        if region_index == n:
+            board_row_to_col = [-1] * n
+            # Loop through region ids
+            for region_id, (row, col) in queen_in_region.items():
+                # Store column of queen placement in row position of list
+                board_row_to_col[row] = col
+            # Add to solutions
+            solutions.append(board_row_to_col)
+            #print(f"Found Solution: {board_row_to_col}")
             return
         
-        # Try all valid placements for current region
-        region = region_order[idx]
-        for i, j in domains[region]:
+        current_region = region_order[region_index]
+        #print(f"Trying to place queen for region {current_region} (index {region_index})")
+        # Loop through all cells in current region
+        for (row, col) in region_cells[current_region]:
             # Placement invalid so skip
-            if (i in used_rows or j in used_cols or
-                    (i + j) in used_diag1 or (i - j) in used_diag2):
+            if (row in used_rows or col in used_cols or
+                (row + col) in used_diag1 or (row - col) in used_diag2):
                 continue
-            # Add the queen to that position
-            used_rows.add(i); used_cols.add(j)
-            used_diag1.add(i + j); used_diag2.add(i - j)
-            assign[region] = (i, j)
-            # Recurse to the next region
-            backtrack(idx + 1)
 
-            # Backtrack and try next placement
-            used_rows.remove(i); used_cols.remove(j)
-            used_diag1.remove(i + j); used_diag2.remove(i - j)
-            del assign[region]
+            # Add the queen to that position
+                # Track location in used sets and then put in region list
+            used_rows.add(row)
+            used_cols.add(col)
+            used_diag1.add(row + col)
+            used_diag2.add(row - col)
+            queen_in_region[current_region] = (row, col)
+            # Recurse to the next region
+            backtrack(region_index + 1)
+
+            # Backtrack and undo the move
+            used_rows.remove(row)
+            used_cols.remove(col)
+            used_diag1.remove(row + col)
+            used_diag2.remove(row - col)
+            del queen_in_region[current_region]
 
             # Early stopping
             if len(solutions) >= 2:
@@ -158,15 +188,25 @@ def find_queen_solutions(regs):
 
     # Call backtrack starting at row 0
     backtrack(0)
+    (f"find_queen_solutions: returning {len(solutions)} solution(s)")
     return solutions
 
-# Sees if a given region of the board remains connected after removing a cell
-def is_region_connected(regs, region_id, remove_cell):
-    n = len(regs)
+'''
+Sees if a given region of the board remains connected after removing a cell
+region_board: 2D grid where each cell has a region ID
+region_id: the ID of the region to check
+cell_to_remove: (row, col) of the cell to remove from the region
+output: True if all remaining cells in the region are still 4-connected; otherwise False
+'''
+def is_region_connected(region_board: list[list[int]], region_id: int, cell_to_remove: tuple[int, int]) -> bool:
+    n = len(region_board)
 
     # Get all cells in the region except the one being removed
-    cells = [(i, j) for i in range(n) for j in range(n)
-             if regs[i][j] == region_id and (i, j) != remove_cell]
+    cells = [(i, j)
+             for i in range(n)
+             for j in range(n)
+             if region_board[i][j] == region_id and (i, j) != cell_to_remove
+            ]
     
     # No cells left, so region is not connected
     if not cells:
@@ -174,109 +214,157 @@ def is_region_connected(regs, region_id, remove_cell):
     
     # Set of cells visited and stack of cells to visit
     visited = set()
+    # Start from a remaining cell
     stack = [cells[0]]
 
     # DFS traversal to all cells in list
     while stack:
-        i, j = stack.pop()
+        row, col = stack.pop()
 
         # Skip visited cells
-        if (i, j) in visited:
+        if (row, col) in visited:
             continue
 
         # Add new cells to set
-        visited.add((i, j))
+        visited.add((row, col))
 
         # Check 4 connected neighbors (up, down, left, right)
-        for di, dj in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-            ni, nj = i + di, j + dj
+        for d_row, d_col in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            neighbor_row = row + d_row
+            neighbor_col = col + d_col
+        
+            # Ensure neighbor cell inside board
+            if (0 <= neighbor_row < n) and (0 <= neighbor_col < n):
+                neighbor = (neighbor_row, neighbor_col)
 
-            # Add to stack if part of same region and not removed cell
-            if (ni, nj) not in visited and 0 <= ni < n and 0 <= nj < n:
-                if regs[ni][nj] == region_id and (ni, nj) != remove_cell:
-                    stack.append((ni, nj))
+                # Add to stack if part of same region and not removed cell
+                if (region_board[neighbor_row][neighbor_col] == region_id and
+                    neighbor != cell_to_remove and
+                    neighbor not in visited):
+                        stack.append(neighbor)
 
-    # Return if all cells visited or not
+    # Region connected if we visited every cell
     return len(visited) == len(cells)
 
-# Create regions of colors seeded from queen's solution placement
-def generate_regions(sol, n):
+'''
+Create regions of colors seeded from queen's solution placement
+solution: list where index = row and value = column of each queen
+board_size: size of the square board (N x N)
+output: 2D list where each cell contains a region ID associated with a queen
+'''
+def generate_regions(solution: list[int], board_size: int) -> list[list[int]]:
     # Create an empty board
-    regs = [[None] * n for _ in range(n)]
-    # List used for filling cells into region
-    frontier = []
+    board = [[None for _ in range(board_size)] for _ in range(board_size)]
+    # Queue of cells to expand from (row, col, region_id)
+    fringe = []
 
     # Place each queen's location as seed of region
-    for r in range(n):
-        i, j = r, sol[r]
-        regs[i][j] = r
+    for region_id in range(board_size):
+        row = region_id
+        # Queen at (row, col) in solution
+        col = solution[region_id]
 
-        # Add neighbors of seed to the frontier of it's specific region
-        for di, dj in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-            ni, nj = i + di, j + dj
-            if 0 <= ni < n and 0 <= nj < n:
-                frontier.append((ni, nj, r))
+        # Mark cell with its region
+        board[row][col] = region_id
+        #print(f"Seeded region {region_id} at cell ({row}, {col})")
 
-    # Randomize filling by randomly picking a frontier cell
+        # Add neighbors to fringe (up, down, left, right)
+        for d_row, d_col in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            neighbor_row = row + d_row
+            neighbor_col = col + d_col
+
+            # Ensure neighbor cell inside board
+            if 0 <= neighbor_row < board_size and 0 <= neighbor_col < board_size:
+                fringe.append((neighbor_row, neighbor_col, region_id))
+
+    # Randomize filling by randomly picking cells
         # Helps keep layouts irregular
-    while frontier:
-        idx = random.randrange(len(frontier))
-        i, j, r = frontier.pop(idx)
+    while fringe:
+        index = random.randrange(len(fringe))
+        row, col, region_id = fringe.pop(index)
 
         # Skip cells already assigned
-        if regs[i][j] is not None:
+        if board[row][col] is not None:
             continue
 
-        # Assign this cell to region 'r'
-        regs[i][j] = r
+        # Assign cell this region's ID
+        board[row][col] = region_id
+        #print(f"Filled cell ({row}, {col}) with region {region_id}")
+
         # Add neighbors to the frontier
-        for di, dj in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-            ni, nj = i + di, j + dj
-            if 0 <= ni < n and 0 <= nj < n and regs[ni][nj] is None:
-                frontier.append((ni, nj, r))
-    return regs
+        for d_row, d_col in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            neighbor_row = row + d_row
+            neighbor_col = col + d_col
 
-# Modify regions to ensure only 1 valid solution
-def carve_regions(sol, regs):
-    n = len(regs)
+            # Ensure neighbor cell inside board and not already assigned
+            if (0 <= neighbor_row < board_size and 0 <= neighbor_col < board_size and
+                board[neighbor_row][neighbor_col] is None):
+                fringe.append((neighbor_row, neighbor_col, region_id))
+    
+    # Final board output
+    print("\nFinal region board:\n")
+    for row in board:
+        print(" ".join(str(cell) if cell is not None else '.' for cell in row))
+    
+    return board
 
-    # Loop until uniqueness met
-    while True:
-        # Returns up to 2 solutions
-        sols = find_queen_solutions(regs)
+'''
+Modify regions to try and ensure only 1 valid solutiontarget_solution: the desired unique N-Queens solution (list of column positions)
+region_board: 2D list where each cell has a region ID (initial configuration)
+max_attempts: number of modification attempts before giving up
+output: modified region_board with at most one valid N-Queens solution
+'''
+def carve_regions(target_solution: list[int], region_board: list[list[int]], max_attempts: int = 50) -> list[list[int]]:
+    n = len(region_board)
+    attempt = 0
 
-        # Return once uniqueness is met
-        if len(sols) < 2:
-            return regs
+    # Cap attempts at 1000
+    while attempt < max_attempts:
+        attempt += 1
+        solutions = find_queen_solutions(region_board)
+
+        # Return if uniqueness met
+        if len(solutions) < 2:
+            print(f"Uniqueness achieved after {attempt} attempt(s).")
+            return region_board
         
-        # Alternate solution (2nd) is solutions at 1
-        alt = sols[1]
-        made = False
+        # Alternate solution that we want to get rid of
+        alternate_solution = solutions[1]
+        made_change = False
 
-        for r in range(n):
-            # Find first row where queen put in "wrong" column
-            if alt[r] != sol[r]:
+        for row in range(n):
+            # Find first row where queen put in alternate column
+            if alternate_solution[row] != target_solution[row]:
+                wrong_col = alternate_solution[row]
+                region_to_remove_from = region_board[row][wrong_col]
 
-                # Try to remove cell from it's current region
-                i, j = r, alt[r]
-                orig = regs[i][j]
+                # Try to remove cell from region by merging into a neighbor
+                for d_row, d_col in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    neighbor_row = row + d_row
+                    neighbor_col = wrong_col + d_col
 
-                # Look at neighboring cells
-                for di, dj in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                    ni, nj = i + di, j + dj
+                    # Ensure neighbor cell inside board
+                    if (0 <= neighbor_row < n and 0 <= neighbor_col < n):
+                        neighbor_region = region_board[neighbor_row][neighbor_col]
 
-                    # See if we can remove that cell from the region
-                    if 0 <= ni < n and 0 <= nj < n and regs[ni][nj] != orig:
-                        if is_region_connected(regs, orig, (i, j)):
-                            regs[i][j] = regs[ni][nj]
-                            made = True
+                        # See if regions are different and nsure region connectivity isn't broken
+                        if (neighbor_region != region_to_remove_from and
+                            is_region_connected(region_board, region_to_remove_from, (row, wrong_col))):
+                            # Reassign to neighbor region
+                            region_board[row][wrong_col] = neighbor_region
+                            made_change = True
+                            # Stop after successful change
                             break
-                break
 
-        # Give up to avoid super long generations
-        if not made:
-            print("Warning: cannot enforce uniqueness further.")
-            return regs
+                if made_change:
+                    break
+            
+        if not made_change:
+            print(f"Gave up after {attempt} attempt(s): can't modify further.")
+            return region_board
+
+    print(f"Maximum attempts ({max_attempts}) reached without enforcing uniqueness.")
+    return region_board
 
 # Generate a puzzle
 def generate_puzzle():
@@ -291,11 +379,13 @@ def generate_puzzle():
     regs = generate_regions(solution, size)
     # Carve regions for uniqueness
     regions = carve_regions(solution, regs)
+
     # Colors of region
     region_colors = palette[:size]
     # Initialize board to no queens or notes placed
     player_board = [[0] * size for _ in range(size)]
     player_notes = [[0] * size for _ in range(size)]
+
     # Text for game description
     info_label.config(text = ("Place one queen in each colored region.\n"
                               "Queens attack in rows, columns, and diagonals."))
