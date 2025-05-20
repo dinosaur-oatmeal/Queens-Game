@@ -14,12 +14,12 @@ player_board = []
 player_notes = []
 
 # Canvas dimensions
-canvas_width = 800
-canvas_height = 800
+canvas_width = 600
+canvas_height = 600
 
 # Number of queens in puzzle
 rand_one = 4
-rand_two = 16
+rand_two = 10
 
 # Color palette for regions
 palette = [
@@ -33,12 +33,6 @@ palette = [
     "#f781bf",  # pink
     "#999999",  # gray
     "#66c2a5",  # teal
-    "#fc8d62",  # salmon
-    "#8da0cb",  # periwinkle
-    "#4a2e74",  # dark purple
-    "#a6d854",  # lime green
-    "#ffd92f",  # bright yellow
-    "#e5c494",  # tan
 ]
 
 '''
@@ -390,33 +384,40 @@ def generate_puzzle():
     info_label.config(text = ("Place one queen in each colored region.\n"
                               "Queens attack in rows, columns, and diagonals."))
 
-# Draw the board in the frame
-def draw_board():
+def draw_board(conflicts = None):
     canvas.delete("all")
     # Base case
     if size == 0:
         return
-    
+
     # size each square based on current canvas size
     sq = min(canvas_width, canvas_height) / size
     for i in range(size):
         for j in range(size):
-            # Paints square with corresponding region color
-            color = region_colors[regions[i][j]]
+            base_color = region_colors[regions[i][j]]
             x1, y1 = j * sq, i * sq
-            canvas.create_rectangle(x1, y1, x1 + sq, y1 + sq,
-                                    fill = color, outline = "black")
+
+            # Highlight conflict
+            if conflicts and (i, j) in conflicts:
+                canvas.create_rectangle(x1, y1, x1 + sq, y1 + sq,
+                                        fill = "lightcoral", outline = "black")
             
+            # Paints square with corresponding region color
+            else:
+                canvas.create_rectangle(x1, y1, x1 + sq, y1 + sq,
+                                        fill = base_color, outline = "black")
+
             # Place queen icon in specific square
             if player_board[i][j] == 1:
+                queen_color = "red" if conflicts and (i, j) in conflicts else "black"
                 canvas.create_text(x1 + sq / 2, y1 + sq / 2, text = "♕",
-                                   font = ("Arial", int(sq / 2)), fill = "black")
-                
+                                   font=("Arial", int(sq / 2)), fill = queen_color)
+
             # Place note icon in specific square
             elif player_notes[i][j] == 1:
                 canvas.create_text(x1 + sq / 2, y1 + sq / 2, text = "X",
-                                   font = ("Arial", int(sq / 3)), fill = "black")
-    
+                                   font=("Arial", int(sq / 3)), fill = "black")
+
     # Draw thick borders between regions for differentiation
     for i in range(size):
         for j in range(size):
@@ -426,6 +427,22 @@ def draw_board():
             if i < size - 1 and regions[i][j] != regions[i + 1][j]:
                 y = (i + 1) * sq
                 canvas.create_line(j * sq, y, (j + 1) * sq, y, width = 2)
+
+# See if queens are attacking each other
+def check_conflicts():
+    # Loop through queen positions
+    positions = [(i, j) for i in range(size) for j in range(size) if player_board[i][j] == 1]
+    # List of conflicts
+    conflicts = []
+    for idx, (r, c) in enumerate(positions):
+        for (r2, c2) in positions[idx + 1:]:
+            # See if queens are attacking one another
+            if queens_attack(r, c, r2, c2):
+                # Add to conflicts
+                conflicts.extend([(r, c), (r2, c2)])
+    
+    # Only return unique positions
+    return list(set(conflicts))
 
 # Check that player has solution
 def check_win():
@@ -488,14 +505,20 @@ def on_click(event):
                     player_board[x][y] = 0
         # Place new queen in the region
         player_board[i][j] = 1
-    # Redraw the board
-    draw_board()
+    
+    # Redraw the board with conflicts
+    conflicts = check_conflicts()
+    draw_board(conflicts)
 
     # See if the player won
     if check_win():
         info_label.config(text = "Congratulations! You found the solution!")
         canvas.unbind("<Button-1>")
         canvas.unbind("<Button-3>")
+    elif conflicts:
+        info_label.config(text = "Queens are attacking each other!")
+    else:
+        info_label.config(text = "")
 
 # Put a note on the board
 def on_right_click(event):
