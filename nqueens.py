@@ -308,7 +308,7 @@ region_board: 2D list where each cell has a region ID (initial configuration)
 max_attempts: number of modification attempts before giving up
 output: modified region_board with at most one valid N-Queens solution
 '''
-def carve_regions(target_solution: list[int], region_board: list[list[int]], max_attempts: int = 50) -> list[list[int]]:
+def carve_regions(target_solution: list[int], region_board: list[list[int]], max_attempts: int = 200) -> list[list[int]]:
     n = len(region_board)
     attempt = 0
 
@@ -364,15 +364,23 @@ def carve_regions(target_solution: list[int], region_board: list[list[int]], max
 def generate_puzzle():
     global size, solution, regions, region_colors, player_board, player_notes, rand_one, rand_two
 
-    # Number of queens in puzzle
-    size = random.randint(rand_one, rand_two)
+    while True:
+        # Number of queens in puzzle
+        size = random.randint(rand_one, rand_two)
 
-    # Generate queen placement
-    solution = generate_queen_solution(size)
-    # Generate regions around queens
-    regs = generate_regions(solution, size)
-    # Carve regions for uniqueness
-    regions = carve_regions(solution, regs)
+        # Generate queen placement
+        solution = generate_queen_solution(size)
+
+        # Generate regions around queens
+        regions = generate_regions(solution, size)
+
+        # Carve regions for uniqueness
+        carved_regions = carve_regions(solution, regions)
+
+        # Verify that there's only one valid solution
+        if len(find_queen_solutions(carved_regions)) < 2:
+            regions = carved_regions
+            break
 
     # Colors of region
     region_colors = palette[:size]
@@ -382,7 +390,7 @@ def generate_puzzle():
 
     # Text for game description
     info_label.config(text = ("Place one queen in each colored region.\n"
-                              "Queens attack in rows, columns, and diagonals."))
+                            "Queens attack in rows, columns, and diagonals."))
 
 def draw_board(conflicts = None):
     canvas.delete("all")
