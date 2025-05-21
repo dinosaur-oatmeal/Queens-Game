@@ -520,16 +520,34 @@ def on_click(event):
     else:
         info_label.config(text = "")
 
-# Put a note on the board
+# Track which cells we've already toggled in the current drag
+dragged_cells = set()
+
+# Right click to mark a singe note
 def on_right_click(event):
+    dragged_cells.clear()
+    mark_note(event)
+
+# Right click drag to mark multiple notes
+def on_right_drag(event):
+    mark_note(event)
+
+# Marks a cell with a note
+def mark_note(event):
     cell = get_cell_from_event(event)
+    # No cell where click occured
     if not cell:
         return
     i, j = cell
-    # Only allow 'X' on empty spaces
+
+    # Avoid flipping a cell twice during one drag
+    if (i, j) in dragged_cells:
+        return
+
+    # Add cell to dragged set
     if player_board[i][j] == 0:
         player_notes[i][j] ^= 1
-        # Redraw board
+        dragged_cells.add((i, j))
         draw_board()
 
 # Shows answer to puzzle
@@ -568,6 +586,7 @@ canvas.pack(padx = 10, pady = 10, expand = True, fill = "both")
 # Left-click, right-click, and GUI resizing
 canvas.bind("<Button-1>", on_click)
 canvas.bind("<Button-3>", on_right_click)
+canvas.bind("<B3-Motion>", on_right_drag)
 canvas.bind("<Configure>", on_resize)
 info_label = tk.Label(root, text = "", font = ("Arial", 12), width = 60)
 info_label.pack(pady = 5)
