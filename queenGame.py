@@ -21,9 +21,13 @@ player_notes = []
 canvas_width = 1000
 canvas_height = 1000
 
-# Number of queens in puzzle
+# Number of queens in puzzle 
 rand_one = 4
 rand_two = 10
+
+# Sound and saved state variables
+sound_enabled = True
+saved_state = None
 
 # Color palette for regions
 palette = [
@@ -180,9 +184,16 @@ def get_cell_from_event(event):
 pygame.mixer.init()
 buzzer_sound = pygame.mixer.Sound("buzzer.mp3")
 
+# Disable buzzer
+def toggle_sound():
+    global sound_enabled
+    sound_enabled = not sound_enabled
+    sound_btn.config(text = "Sound: ON" if sound_enabled else "Sound: OFF")
+
 # Play the buzzer (allows overlaps)
 def play_buzzer():
-    buzzer_sound.play()
+    if sound_enabled:
+        buzzer_sound.play()
 
 # Find Euclidean distance between 2 cells
 def euclidean_too_far(board, conflicts):
@@ -202,6 +213,48 @@ def euclidean_too_far(board, conflicts):
                     #print(f"Euclidean distance: {dist:.2f} between {(x1, y1)} and {(x2, y2)}")
                     return True
     return False
+
+# Save the current board state
+def save_state():
+    global saved_state
+    # Deep copy current state
+    saved_state = {
+        "player_board": [row[:] for row in player_board],
+        "player_notes": [row[:] for row in player_notes]
+    }
+    info_label.config(text = "Game state saved.")
+
+# Load the saved state
+def load_state():
+    global player_board, player_notes
+    if saved_state:
+        player_board = [row[:] for row in saved_state["player_board"]]
+        player_notes = [row[:] for row in saved_state["player_notes"]]
+
+        # Load saved state with conflict checking
+        draw_board(check_conflicts())
+        info_label.config(text = "Saved state loaded.")
+    # No saved state available
+    else:
+        info_label.config(text = "No saved state available.")
+
+# Easy difficulty
+def set_easy():
+    global rand_one, rand_two
+    rand_one, rand_two = 4, 6
+    reset_game()
+
+# Medium difficulty
+def set_medium():
+    global rand_one, rand_two
+    rand_one, rand_two = 7, 8
+    reset_game()
+
+# Hard difficulty
+def set_hard():
+    global rand_one, rand_two
+    rand_one, rand_two = 9, 10
+    reset_game()
 
 # Left-click to place queen
 def on_click(event):
@@ -289,6 +342,11 @@ def reveal_solution():
 
 # Reset the game
 def reset_game():
+    global saved_state
+
+    # Clear saved state when reseting
+    saved_state = None
+
     # Left and right click
     canvas.bind("<Button-1>", on_click)
     canvas.bind("<Button-3>", on_right_click)
@@ -323,6 +381,30 @@ reset_btn = tk.Button(btn_frame, text = "Reset Game", command = reset_game)
 btn_frame.pack(pady = 5, fill = "x")
 sol_btn.pack(side = "left", padx = 5, expand = True, fill = "x")
 reset_btn.pack(side = "left", padx = 5, expand = True, fill = "x")
+
+# Difficulty buttons frame
+difficulty_frame = tk.Frame(root)
+difficulty_frame.pack(pady = 5, fill = "x")
+
+# Difficulty buttons
+easy_btn = tk.Button(difficulty_frame, text = "Easy", command = set_easy)
+medium_btn = tk.Button(difficulty_frame, text = "Medium", command = set_medium)
+hard_btn = tk.Button(difficulty_frame, text = "Hard", command = set_hard)
+easy_btn.pack(side = "left", padx = 5, expand = True, fill = "x")
+medium_btn.pack(side = "left", padx = 5, expand = True, fill = "x")
+hard_btn.pack(side = "left", padx = 5, expand = True, fill = "x")
+
+# Sound toggle button
+sound_btn = tk.Button(btn_frame, text = "Sound: ON", command = toggle_sound)
+sound_btn.pack(side = "left", padx = 5, expand = True, fill = "x")
+
+# Save and load button frame
+save_btn = tk.Button(btn_frame, text = "Save", command = save_state)
+load_btn = tk.Button(btn_frame, text = "Load", command = load_state)
+
+# Save and load buttons
+save_btn.pack(side = "left", padx = 5, expand = True, fill = "x")
+load_btn.pack(side = "left", padx = 5, expand = True, fill = "x")
 
 reset_game()
 root.mainloop()
