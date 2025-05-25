@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang = "en">
+<head>
+  <meta charset = "UTF-8">
+  <title>Queen Puzzle</title>
+  <link rel = "stylesheet" href = "/static/style.css">
+  <script src = "/static/game.js" defer></script>
+</head>
+<body>
+  <h2>Queen Puzzle Game</h2>
+
+    <!-- Top controls -->
+    <div class = "controls top-controls">
+        <button onclick = "generate()">♻️ New</button>
+        <button onclick = "save()">💾 Save</button>
+        <button onclick = "load()">📂 Load</button>
+        <button onclick = "toggleSound()" id = "soundToggle">🔊 Sound: OFF</button>
+    </div>
+
+    <!-- Game board -->
+    <svg id = "board" width = "800" height = "800"></svg>
+
+    <!-- Bottom controls -->
+    <div class = "controls bottom-controls">
+        <div class = "dropdown-wrapper">
+            <button class = "dropbtn" onclick = "toggleDropdown()">🎯 Difficulty</button>
+            <div class = "dropdown-content" id = "difficultyMenu">
+                <button onclick = "setDifficulty('easy')">🟢 Easy</button>
+                <button onclick = "setDifficulty('medium')">🟡 Medium</button>
+                <button onclick = "setDifficulty('hard')">🔴 Hard</button>
+            </div>
+        </div>
+        <button onclick = "showSolution()">🧠 Show Solution</button>
+    </div>
+
+    <p id = "status"></p>
+
+    <!-- Buzzer file-->
+    <audio id = "buzzer" src = "/static/buzzer.mp3"></audio>
+</body>
+</html>

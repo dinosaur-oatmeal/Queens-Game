@@ -2,7 +2,7 @@ import random
 from itertools import product
 
 # Import core functions from your queenPuzzle module
-from queenGenerate import *
+from logic import *
 
 # Brute force a puzzle
 def brute_force_solutions(regions, size):
@@ -71,7 +71,6 @@ def main(rand_one = 4, rand_two = 8):
         print(f"\ntest {i}: Generated {size}*{size} puzzle, found {count} valid placement(s).")
     
     print(f"\n\n{total_unique} unique solutions")
-
 
 if __name__ == "__main__":
     main()
