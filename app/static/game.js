@@ -218,19 +218,26 @@ async function checkBoard()
   if (win)
   {
     gameWon = true;
-    document.getElementById("status").textContent = "🎉 Congratulations!";
+    document.getElementById("status").textContent = "🎉 Congratulations, you solved the puzzle!";
   }
   
   // Conflicts found on board
   else if (conflicts.length)
   {
-    document.getElementById("status").textContent = "Conflicts detected!";
+    document.getElementById("status").textContent = "Queen conflicts detected!";
 
     // Play buzzer if at least 3 queens in conflict or queens too far apart
     if (soundOn && (conflicts.length >= 3 || euclideanTooFar(conflicts)))
     {
       document.getElementById("buzzer").play();
     }
+  }
+
+  // No conflicts but not the solution
+  else
+  {
+    console.log("No conflicts, but not the solution");
+    document.getElementById("status").textContent = "";
   }
 
   //console.log("conflicts from backend:", conflicts);
@@ -323,60 +330,6 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Save the current board
-async function save()
-{
-  // Call save function from back-end
-  await fetch("/save", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ board: boardState, notes: noteState, regions: gameData.regions, size: gameData.size })
-  });
-  document.getElementById("status").textContent = "Game state saved.";
-}
-
-// Load the saved board (if applicable)
-async function load()
-{
-  // Game can't be won if board is loaded
-  gameWon = false;
-  // Call load function from back-end
-  const res = await fetch("/load");
-  const data = await res.json();
-
-  // No saved state available to be loaded
-  if (data.error)
-  {
-    document.getElementById("status").textContent = "No saved state.";
-    return;
-  }
-
-  // Update parameters to saved state and redraw board
-  gameData = { size: data.size, regions: data.regions };
-  boardState = data.board;
-  noteState = data.notes;
-  draw();
-  document.getElementById("status").textContent = "Loaded saved state.";
-}
-
-// Disable/enable sound
-function toggleSound()
-{
-  // Flip boolean to opposite
-  soundOn = !soundOn;
-  document.querySelector("button[onclick='toggleSound()']").textContent = `🔊 Sound: ${soundOn ? "ON" : "OFF"}`;
-}
-
-// Changes difficulty of game
-async function setDifficulty(level)
-{
-  //console.log(level);
-
-  await fetch(`/difficulty/${level}`);
-  // Regenerate game board when difficulty altered
-  generate();
-}
-
 // Save the current game state in local storage
 function save() {
   const data =
@@ -425,6 +378,24 @@ function load()
   draw();
 
   document.getElementById("status").textContent = "Loaded saved state.";
+}
+
+// Disable/enable sound
+function toggleSound()
+{
+  // Flip boolean to opposite
+  soundOn = !soundOn;
+  document.querySelector("button[onclick='toggleSound()']").textContent = `🔊 Sound: ${soundOn ? "ON" : "OFF"}`;
+}
+
+// Changes difficulty of game
+async function setDifficulty(level)
+{
+  //console.log(level);
+
+  await fetch(`/difficulty/${level}`);
+  // Regenerate game board when difficulty altered
+  generate();
 }
 
 // Always generate a puzzle on load
