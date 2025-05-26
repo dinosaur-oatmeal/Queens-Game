@@ -1,39 +1,134 @@
-# Queens Game
+# Queen Puzzle Game
 
-An interactive puzzle game featuring **AI-generated N-Queens challenges**. The goal of the game is to place exactly one queen in each uniquely colored region without conflict. Every puzzle guarantees a unique solution!
+A web-based puzzle game where you place queens on a colored, region-based board so that no two queens attack each other. Each puzzle has a unique solution, and you can take notes, save your progress, and adjust difficulty.
 
-## 🎯 How the AI Generates Your Puzzle
+## Features
 
-The puzzle generation AI algorithm creates each puzzle in three steps:
+* **Unique-board generation**: Board regions generated server-side using a flood-fill algorithm seeded by a valid queen solution, then "carved" to ensure there's exactly one solution.
+* **Interactive SVG board**: Drag, click, and right-click to place queens (♕) and notes (X) in cells.
+* **Quality-of-life**:
 
-1. **Randomized N-Queens Solver**: Utilizing backtracking, a valid arrangement of queens for boards sized between 4 and 10 is randomly generated, helping create a variety of difficulty levels.
+  * Note-taking on cells to pencil-mark possibilities.
+  * Save and load your game state locally (expires after 30 minutes).
+  * Difficulty levels (Easy, Medium, Hard) control board size range.
+  * Toggle sound effects for conflict buzzer.
+  * Reveal solution when stuck.
+* **Robust API**: Built with FastAPI and Pydantic for strict request/response models and input validation.
+* **Docker-ready**: Containerize with Docker for easy deployment now or in the future.
 
-2. **Region Seeding & Expansion**: Each queen's placement acts as the seed for its region. A randomized flood-fill process expands these seeds, creating visually distinct, irregularly shaped regions that naturally guide queen placement during the game.
+## Tech Stack
 
-3. **Ensuring Unique Solutions**: A constraint-satisfaction algorithm employs the minimum remaining values (MRV) heuristic and iterative region carving. It methodically merges cells and eliminates alternative solutions until only one valid arrangement remains.
+* **Back-end**: Python, FastAPI, Pydantic, custom logic modules (`logic.py`) for puzzle generation and validation.
+* **Front-end**: Vanilla JavaScript, SVG for board rendering, HTML/CSS.
+* **Persistence**: Browser `localStorage` for save/load.
+* **Containerization**: Docker.
 
-## 🚀 Game Features
+## Getting Started
 
-### Customizable, Randomized Board Sizes
+### Prerequisites
 
-* **Tailored Difficulty**: Every puzzle randomly chooses between 4 and 10 queens, perfect for casual playing or strategic challenges.
-* **Endless Variety**: Each puzzle is freshly generated on reset, mitigating the chances of receiving the same puzzle twice.
+* Docker
 
-### Smart N-Queens Solver
+### Build and Run with Docker
 
-* **Dynamic Puzzle Generation**: Uses randomized column orders to guarantee unpredictable layouts every time.
-* **Optimized Efficiency**: Tracks placements with constraints for instant validity checks, speeding up puzzle generation dramatically.
+1. Build the Docker image:
 
-### Visually Appealing Region Generation
+   ```bash
+   docker build -t queen-puzzle:latest .
+   ```
 
-* **Queen-based Region Formation**: Each queen's location initializes a distinct region, creating natural guides for queen placement.
-* **Organic Layout**: Randomized flood-filling results in visually engaging, color-coded regions with clear boundaries.
+2. Run the container:
 
-### Unique Puzzle Assurance
+   ```bash
+   docker run -d --name queen-puzzle -p 8000:8000 queen-puzzle:latest
+   ```
 
-* **Robust Conflict Checking**: Quickly detects multiple solutions, prioritizing regions with fewer placement options for rapid puzzle refinement.
-* **Adaptive Merging**: Safely merges conflicting cells into neighboring regions, maintaining connectivity while enforcing a singular solution.
+3. Open your browser at `http://localhost:8000`.
 
-### Instant Conflict Feedback
+## Project Structure
 
-* **Real-Time Detection**: Immediate visual feedback highlights conflicts whenever queens threaten each other in rows, columns, or diagonals.
+```
+├── Dockerfile
+├── logic.py            # Core puzzle generation and validation logic
+├── main.py             # FastAPI application
+├── static/             # Front-end assets
+│   ├── index.html
+│   ├── style.css
+│   ├── game.js
+│   └── buzzer.mp3
+└── README.md
+```
+
+## API Reference
+
+### `GET /generate`
+
+Generate a new puzzle.
+
+**Response** (`GenerateResponse`):
+
+```json
+{
+  "size": 8,
+  "solution": [3, 1, 6, 4, 0, 7, 5, 2],
+  "regions": [[...], [...], ...]
+}
+```
+
+* `size`: board dimension (4 – 10).
+* `solution`: column index per row for the unique solution.
+* `regions`: 2D matrix assigning each cell a region ID.
+
+### `POST /check`
+
+Validate current board state.
+
+**Request** (`CheckRequest`):
+
+```json
+{
+  "size": 8,
+  "board": [[0,1,0,...], ...],
+  "regions": [[...], ...]
+}
+```
+
+**Response** (`CheckResponse`):
+
+```json
+{
+  "win": false,
+  "conflicts": [[0,1], [2,5], ...]
+}
+```
+
+* `win`: `true` if exactly one queen in each region and no attacks.
+* `conflicts`: list of `[row, col]` pairs that violate rules.
+
+### `GET /difficulty/{level}`
+
+Set puzzle difficulty:
+
+* `easy`: sizes 4–6
+* `medium`: sizes 7–8
+* `hard`: sizes 9–10
+
+## Input Validation & Security
+
+All API payloads are validated with Pydantic models enforcing:
+
+* Matrix dimensions (`size × size`).
+* Cell values (`0` or `1` for board/notes).
+* Region IDs are non-negative integers.
+
+Invalid or malformed requests return HTTP 422 errors.
+
+## Front-end Overview
+
+* **SVG Board Rendering**: JavaScript builds an `N × N` grid of `<rect>` elements colored by regions.
+* **Event Handling**:
+
+  * **Left-click**: Place or remove a queen in a region, ensuring one queen per region.
+  * **Right-click drag**: Pencil X-marks for notes.
+  * **Controls**: New game, save, load, difficulty menu, sound toggle, show solution.
+* **Game Status**: Displays conflicts or victory message.
