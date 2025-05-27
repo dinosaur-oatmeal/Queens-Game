@@ -6,7 +6,7 @@ docker run -p 8000:8000 queen-game
 http://localhost:8000/
 '''
 # Web framework
-from fastapi import FastAPI, Path, HTTPException
+from fastapi import FastAPI, Path, HTTPException, Request
 # Serve files from a static folder
 from fastapi.staticfiles import StaticFiles
 # Return file responses and JSON responses
@@ -18,9 +18,18 @@ from typing import List, Annotated
 from logic import generate_queen_solution, generate_regions, carve_regions, find_queen_solutions, queens_attack
 # Puzzle size
 import random
+# Rate limit to protect API
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+# Create limiter
+limiter = Limiter(key_func = get_remote_address)
 
 # Create API app and serve files from static directory
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.mount("/static", StaticFiles(directory = "static"), name = "static")
 
 # No saved state and default to easy difficulty
@@ -116,7 +125,9 @@ def root():
 
 # Generate a puzzle
 @app.get("/generate", response_model = GenerateResponse)
-def generate():
+# Limit to 10 generations a minute
+@limiter.limit("10/minute")
+def generate(request: Request):
     # Get puzzle size range and clear saved state
     global rand_one, rand_two
 
@@ -137,7 +148,9 @@ def generate():
 
 # See if board matches solution or has conflicts
 @app.post("/check", response_model = CheckResponse)
-async def check(payload: CheckRequest):
+# Limit to 100 checks a minute
+@limiter.limit("100/minute")
+async def check(request: Request, payload: CheckRequest):
     board, regions, size = payload.board, payload.regions, payload.size
 
     # See if there are duplicate queens in the same region
@@ -176,11 +189,13 @@ async def check(payload: CheckRequest):
     }
 
 # Change difficulty of the game
+# Limit to 3 difficulty changes a minute
 @app.get(
     "/difficulty/{level}",
     summary = "Set puzzle difficulty",
 )
-def set_difficulty(level: Annotated[str, Path(pattern = "^(easy|medium|hard)$", description = "easy, medium, or hard")]):
+@limiter.limit("3/minute")
+def set_difficulty(request: Request, level: Annotated[str, Path(pattern = "^(easy|medium|hard)$", description = "easy, medium, or hard")]):
     global rand_one, rand_two
     # Easy
     if level == "easy":
