@@ -12,8 +12,8 @@ from fastapi.staticfiles import StaticFiles
 # Return file responses and JSON responses
 from fastapi.responses import FileResponse, JSONResponse
 # Used for input validation
-from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import List, Annotated
+from pydantic import BaseModel, Field, validator, root_validator
+from typing import List
 # Game logic imports
 from logic import generate_queen_solution, generate_regions, carve_regions, find_queen_solutions, queens_attack
 # Puzzle size
@@ -39,44 +39,53 @@ rand_two = 6
 ''' Pydantic Validation '''
 
 class GenerateResponse(BaseModel):
-    # Size is between 4 and 12
-    size: Annotated[int, Field(ge = 4, le = 12)]
-    # List for solution positions
-    solution: List[Annotated[int, Field(ge = 0)]]
-    # Matrix of region IDs
-    regions: List[List[Annotated[int, Field(ge = 0)]]]
+    size: int = Field(..., ge=4, le=12)
+    solution: List[int]
+    regions: List[List[int]]
 
-    # Check region matrix
-    @field_validator("regions")
-    @classmethod
-    # Ensure region matrix has size n * n
-    def ensure_regions_square(cls, regions, info):
-        n = info.data["size"]
-        if len(regions) != n or any(len(row) != n for row in regions):
-            raise ValueError(f"regions must be a {n} * {n} matrix")
-        return regions
+    @validator("solution", each_item=True)
+    def validate_solution_values(cls, v):
+        if v < 0:
+            raise ValueError("solution values must be >= 0")
+        return v
+
+    @root_validator
+    def validate_regions_matrix(cls, values):
+        size = values.get("size")
+        regions = values.get("regions")
+
+        if not isinstance(regions, list) or not all(isinstance(row, list) for row in regions):
+            raise ValueError("regions must be a 2D list")
+
+        if len(regions) != size or any(len(row) != size for row in regions):
+            raise ValueError(f"regions must be a {size} x {size} matrix")
+
+        for row in regions:
+            for val in row:
+                if val < 0:
+                    raise ValueError("region values must be >= 0")
+
+        return values
 
 # Used when front-end sends board to be checked
 class CheckRequest(BaseModel):
-    size: Annotated[int, Field(ge = 4, le = 12)]
+    size: int = Field(..., ge=4, le=12)
     # Board is a 2D list
         # Each cell is either empty (0) or has a queen (1)
-    board: List[List[Annotated[int, Field(ge = 0, le = 1)]]]
+    board: List[List[int]]
     # Matrix for each cell's region
-    regions: List[List[Annotated[int, Field(ge = 0)]]]
+    regions: List[List[int]]
 
     # Validate model after all data available
-    @model_validator(mode = "after")
-    def validate_matrices(self) -> "CheckRequest":
-        n = self.size
-
+    @root_validator
+    def validate_matrices(cls, values):
+        size = values.get("size")
         for name in ["board", "regions"]:
-            matrix = getattr(self, name)
-
-            if len(matrix) != n or any(len(r) != n for r in matrix):
-                raise ValueError(f"{name} must be a {n} x {n} matrix")
-            
-        return self
+            matrix = values.get(name)
+            if matrix is not None:
+                if len(matrix) != size or any(len(r) != size for r in matrix):
+                    raise ValueError(f"{name} must be a {size} x {size} matrix")
+        return values
 
 # Used when user submits board for validation
 class CheckResponse(BaseModel):
@@ -86,35 +95,21 @@ class CheckResponse(BaseModel):
 
 # Used when a save is created
 class SaveRequest(BaseModel):
-    size: Annotated[int, Field(ge = 4, le = 12)]
-    # Validate board
-    board: Annotated[
-        List[List[Annotated[int, Field(ge = 0, le = 1)]]],
-        Field(description="square matrix of 0 or 1")
-    ]
-    # Validate notes
-    notes: Annotated[
-        List[List[Annotated[int, Field(ge = 0, le = 1)]]],
-        Field(description="square matrix of 0 or 1")
-    ]
-    # Validate regions
-    regions: Annotated[
-        List[List[Annotated[int, Field(ge = 0)]]],
-        Field(description="square matrix of non-negative region IDs")
-    ]
+    size: int = Field(..., ge=4, le=12)
+    board: List[List[int]]
+    notes: List[List[int]]
+    regions: List[List[int]]
 
     # Validate model after all data available
-    @model_validator(mode = "after")
-    def ensure_matrices_square(self):
-        n = self.size
-
+    @root_validator
+    def ensure_matrices_square(cls, values):
+        size = values.get("size")
         for name in ["board", "notes", "regions"]:
-            matrix = getattr(self, name)
-
-            if len(matrix) != n or any(len(r) != n for r in matrix):
-                raise ValueError(f"{name} must be a {n} x {n} matrix")
-
-        return self
+            matrix = values.get(name)
+            if matrix is not None:
+                if len(matrix) != size or any(len(row) != size for row in matrix):
+                    raise ValueError(f"{name} must be a {size} x {size} matrix")
+        return values
 
 '''API Endpoints'''
 
@@ -195,7 +190,7 @@ async def check(request: Request, payload: CheckRequest):
     summary = "Set puzzle difficulty",
 )
 @limiter.limit("3/minute")
-def set_difficulty(request: Request, level: Annotated[str, Path(pattern = "^(easy|medium|hard)$", description = "easy, medium, or hard")]):
+def set_difficulty(request: Request, level: str = Path(..., regex="^(easy|medium|hard)$", description="easy, medium, or hard")):
     global rand_one, rand_two
     # Easy
     if level == "easy":

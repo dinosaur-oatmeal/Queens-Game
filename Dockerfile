@@ -1,24 +1,26 @@
 FROM python:3.11-slim
 
-# Install system deps and Rust, then install Python packages in same RUN block
+# Install system dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential curl && \
-    curl https://sh.rustup.rs -sSf | sh -s -- -y && \
-    export PATH="$HOME/.cargo/bin:$PATH" && \
-    pip install --upgrade pip && \
-    pip install --no-cache-dir -r /tmp/requirements.txt
+    apt-get install -y --no-install-recommends build-essential && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
-# Copy app files after dependencies are installed
+# Copy requirements first to cache dependencies
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of your app
 COPY . .
 
-# Reinstall just in case any app-local changes
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Expose FastAPI port
+# Expose port for FastAPI
 EXPOSE 8000
 
-# Run the app
+# Run your app
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
