@@ -2,6 +2,8 @@
 
 A web-based puzzle game where you place queens on a colored, region-based board so that no two queens attack each other. Each puzzle has a unique solution, and you can take notes, save your progress, and adjust difficulty.
 
+### Visit the website [here](https://games.willmaberry.com/)
+
 ## Features
 
 * **Unique-board generation**: Board regions generated server-side using a flood-fill algorithm seeded by a valid queen solution, then "carved" to ensure there's exactly one solution.
