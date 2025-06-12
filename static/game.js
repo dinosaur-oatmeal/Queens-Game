@@ -1,3 +1,72 @@
+// Run when DOM is fully loaded
+window.addEventListener("DOMContentLoaded", () => {
+  checkConsent();
+});
+
+function showCookieBanner() {
+  const banner = document.createElement("div");
+  banner.id = "cookie-banner";
+  banner.classList.add("fade-in"); // trigger fade in
+
+  banner.innerHTML = `
+    <div id="cookie-modal">
+      <p>
+        This game uses one cookie to remember your difficulty setting and stores progress in your browser using local storage.
+        <br><br>
+        No personal data is collected or shared.
+        <a href="/static/privacy.html" target="_blank">Privacy Policy</a>
+      </p>
+      <div class="cookie-buttons">
+        <button onclick="acceptCookies()">Accept & Continue</button>
+        <button class="reject" onclick="rejectCookies()">Reject</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(banner);
+}
+
+function acceptCookies() {
+  localStorage.setItem("cookieConsent", "true");
+  const banner = document.getElementById("cookie-banner");
+  banner.classList.remove("fade-in");
+  banner.classList.add("fade-out");
+
+  setTimeout(() => {
+    banner.remove();
+    // Start game
+    generate();
+  }, 300); // match animation duration
+}
+
+function rejectCookies() {
+  // Lock interface by not starting game
+  const banner = document.getElementById("cookie-banner");
+  banner.classList.remove("fade-in");
+  banner.classList.add("fade-out");
+
+  setTimeout(() => {
+    banner.innerHTML = `<div id="cookie-modal"><p>Cookie use declined. This game cannot run without minimal cookies and local storage.</p></div>`;
+    banner.classList.remove("fade-out");
+    banner.classList.add("fade-in");
+  }, 300);
+}
+
+
+function checkConsent() {
+  const consent = localStorage.getItem("cookieConsent");
+  if (!consent)
+  {
+    showCookieBanner();
+  }
+  
+  else
+  {
+    // Auto-start game if consent already given
+    generate();
+  }
+}
+
 // Colors for game regions
 const palette = [
     "#e41a1c", "#377eb8", "#4daf4a", "#984ea3",
@@ -397,6 +466,3 @@ async function setDifficulty(level)
   // Regenerate game board when difficulty altered
   generate();
 }
-
-// Always generate a puzzle on load
-generate();
