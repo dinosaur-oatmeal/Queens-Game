@@ -123,8 +123,16 @@ def root():
 # Limit to 10 generations a minute
 @limiter.limit("10/minute")
 def generate(request: Request):
-    # Get puzzle size range and clear saved state
-    global rand_one, rand_two
+    difficulty = request.cookies.get("difficulty", "easy")
+
+    # Map difficulty to range
+    difficulty_map = {
+        "easy": (4, 6),
+        "medium": (7, 8),
+        "hard": (9, 10)
+    }
+
+    rand_one, rand_two = difficulty_map.get(difficulty, (4, 6))
 
     # Loop until a valid puzzle is found
     while True:
@@ -191,15 +199,19 @@ async def check(request: Request, payload: CheckRequest):
 )
 @limiter.limit("3/minute")
 def set_difficulty(request: Request, level: str = Path(..., regex="^(easy|medium|hard)$", description="easy, medium, or hard")):
-    global rand_one, rand_two
-    # Easy
-    if level == "easy":
-        rand_one, rand_two = 4, 6
-    # Medium
-    elif level == "medium":
-        rand_one, rand_two = 7, 8
-    # Hard
-    elif level == "hard":
-        rand_one, rand_two = 9, 10
+    # Map difficulty to range
+    difficulty_map = {
+        "easy": (4, 6),
+        "medium": (7, 8),
+        "hard": (9, 10)
+    }
+
+    if level not in difficulty_map:
+        raise HTTPException(status_code = 400, detail = "Invalid difficulty")
+
+    rand_one, rand_two = difficulty_map[level]
     
-    return {"status": "difficulty set", "range": [rand_one, rand_two]}
+    # Set difficulty in a cookie
+    response = JSONResponse(content = {"status": "difficulty set", "range": [rand_one, rand_two]})
+    response.set_cookie(key = "difficulty", value = level, httponly = True, max_age = 3600*24)  # expires in 1 day
+    return response
