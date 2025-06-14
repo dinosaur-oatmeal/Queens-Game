@@ -67,6 +67,18 @@ function checkConsent() {
   }
 }
 
+function toggleHelp() {
+  const modal = document.getElementById("helpModal");
+  modal.style.display = modal.style.display === "block" ? "none" : "block";
+}
+
+window.addEventListener("click", function(event) {
+  const modal = document.getElementById("helpModal");
+  if (event.target === modal) {
+    modal.style.display = "none";
+  }
+});
+
 // Colors for game regions
 const palette = [
     "#e41a1c", "#377eb8", "#4daf4a", "#984ea3",

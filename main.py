@@ -120,8 +120,8 @@ def root():
 
 # Generate a puzzle
 @app.get("/generate", response_model = GenerateResponse)
-# Limit to 10 generations a minute
-@limiter.limit("10/minute")
+# Limit to 20 generations a minute
+@limiter.limit("20/minute")
 def generate(request: Request):
     difficulty = request.cookies.get("difficulty", "easy")
 
@@ -151,8 +151,8 @@ def generate(request: Request):
 
 # See if board matches solution or has conflicts
 @app.post("/check", response_model = CheckResponse)
-# Limit to 100 checks a minute
-@limiter.limit("100/minute")
+# Limit to 150 checks a minute
+@limiter.limit("150/minute")
 async def check(request: Request, payload: CheckRequest):
     board, regions, size = payload.board, payload.regions, payload.size
 
@@ -192,12 +192,12 @@ async def check(request: Request, payload: CheckRequest):
     }
 
 # Change difficulty of the game
-# Limit to 3 difficulty changes a minute
+# Limit to 5 difficulty changes a minute
 @app.get(
     "/difficulty/{level}",
-    summary = "Set puzzle difficulty",
+    summary = "Set puzzle difficulty"
 )
-@limiter.limit("3/minute")
+@limiter.limit("5/minute")
 def set_difficulty(request: Request, level: str = Path(..., regex="^(easy|medium|hard)$", description="easy, medium, or hard")):
     # Map difficulty to range
     difficulty_map = {
