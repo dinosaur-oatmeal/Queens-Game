@@ -3,11 +3,11 @@
 <head>
   <meta charset = "UTF-8">
   <title>Queen Puzzle</title>
-  <link rel="stylesheet" href="/static/style.css?v=1.0.6">
+  <link rel="stylesheet" href="/static/style.css?v=1.0.8">
   <script src = "/static/game.js?v=1.0.2" defer></script>
 </head>
 <body>
-  <h2>Queen Puzzle Game</h2>
+  <h2 class="title">Queen Puzzle Game</h2>
 
     <!-- Top controls -->
     <div class = "controls top-controls">
@@ -44,10 +44,10 @@
     <!-- Modal Help Popup -->
     <div id="helpModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="toggleHelp()">&times;</span>
-            <h3>How to Play</h3>
+            <h2>How to Play</h2>
             <p>Your goal is to place a queen in each colored region such that no queens can attack one another. There is only one correct solution.</p>
-            <ul>
+
+            <ul class="help-list">
             <li><strong>Left click</strong>: Place a queen</li>
             <li><strong>Right click</strong>: Place an X (note)</li>
             <li><strong>Right click & drag</strong>: Place multiple notes</li>
@@ -57,9 +57,9 @@
             <li><strong>Sound</strong>: Toggles the buzzer when you make embarrassing mistakes</li>
             <li><strong>Difficulty</strong>:
                 <ul>
-                <li>Easy: 4–6 queens</li>
-                <li>Medium: 7–8 queens</li>
-                <li>Hard: 9–10 queens</li>
+                <li><strong>Easy</strong>: 4–6 queens</li>
+                <li><strong>Medium</strong>: 7–8 queens</li>
+                <li><strong>Hard</strong>: 9–10 queens</li>
                 </ul>
             </li>
             <li><strong>Show Solution</strong>: Reveal the solution and end the game</li>

@@ -103,7 +103,7 @@ h2 {
   margin-top: 20px;
   font-size: 32px;
   font-weight: bold;
-  color: #fff;
+  color: #f472b6;
 }
 
 .controls {
@@ -274,7 +274,7 @@ svg#board {
 .modal-content h2 {
   font-size: 1.5rem;
   margin-bottom: 12px;
-  color: #f472b6; /* Accent color */
+  color: #f472b6;
 }
 
 .modal-content p {
@@ -318,7 +318,7 @@ svg#board {
 }
 
 .credit-box a {
-    color: #ffffff;
+    color: #f472b6;
     text-decoration: underline;
 }
 
